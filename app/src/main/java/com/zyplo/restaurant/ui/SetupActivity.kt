@@ -14,7 +14,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationManagerCompat
 import com.zyplo.restaurant.R
+import com.zyplo.restaurant.alerts.OrderWatchService
 import com.zyplo.restaurant.data.Prefs
+import com.zyplo.restaurant.device.DeviceSettings
 
 class SetupActivity : AppCompatActivity() {
     private lateinit var status: TextView
@@ -31,7 +33,10 @@ class SetupActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Prefs.setupComplete) {
+        if (Prefs.setupComplete &&
+            DeviceSettings.notificationsOn(this) &&
+            DeviceSettings.overlayOn(this)
+        ) {
             openPortal()
             return
         }
@@ -44,8 +49,19 @@ class SetupActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btnOverlay).setOnClickListener { askOverlay() }
         findViewById<Button>(R.id.btnBattery).setOnClickListener { askBattery() }
+        findViewById<Button>(R.id.btnLockScreen).setOnClickListener {
+            if (com.zyplo.restaurant.device.DeviceSettings.fullScreenAlertsOn(this)) {
+                Toast.makeText(this, R.string.lock_screen_ok, Toast.LENGTH_SHORT).show()
+            } else {
+                com.zyplo.restaurant.device.DeviceSettings.openFullScreenIntentSettings(this)
+            }
+        }
+        findViewById<Button>(R.id.btnAutostart).setOnClickListener {
+            com.zyplo.restaurant.device.DeviceSettings.openAutostart(this)
+        }
         findViewById<Button>(R.id.btnContinue).setOnClickListener {
             Prefs.setupComplete = true
+            OrderWatchService.start(this)
             openPortal()
         }
         refreshStatus()
@@ -109,7 +125,8 @@ class SetupActivity : AppCompatActivity() {
             R.string.setup_status,
             if (notify) "ON" else "OFF",
             if (overlay) "ON" else "OFF",
-            if (battery) "ON" else "OFF"
+            if (battery) "ON" else "OFF",
+            if (DeviceSettings.fullScreenAlertsOn(this)) "ON" else "OFF"
         )
     }
 

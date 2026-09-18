@@ -1,5 +1,6 @@
 package com.zyplo.restaurant.alerts
 
+import android.app.KeyguardManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
@@ -9,14 +10,15 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.ServiceCompat
+import com.zyplo.restaurant.data.IncomingOrder
 import com.zyplo.restaurant.data.Prefs
 import com.zyplo.restaurant.overlay.OverlayBubbleService
 import com.zyplo.restaurant.ui.OrderAlertActivity
-import org.json.JSONObject
 
 class OrderWatchService : Service() {
     private var siren: SirenPlayer? = null
-    private var wakeLock: PowerManager.WakeLock? = null
+    private var cpuLock: PowerManager.WakeLock? = null
+    private var screenLock: PowerManager.WakeLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -24,9 +26,14 @@ class OrderWatchService : Service() {
         super.onCreate()
         siren = SirenPlayer(this)
         val pm = getSystemService(PowerManager::class.java)
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "zyplo:order-watch").apply {
+        cpuLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "zyplo:order-cpu").apply {
             setReferenceCounted(false)
         }
+        @Suppress("DEPRECATION")
+        screenLock = pm.newWakeLock(
+            PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            "zyplo:order-screen"
+        ).apply { setReferenceCounted(false) }
         startAsForeground()
     }
 
@@ -37,44 +44,42 @@ class OrderWatchService : Service() {
                 val title = intent.getStringExtra(EXTRA_TITLE) ?: getString(com.zyplo.restaurant.R.string.new_order_title)
                 val body = intent.getStringExtra(EXTRA_BODY) ?: getString(com.zyplo.restaurant.R.string.new_order_body)
                 val json = intent.getStringExtra(EXTRA_ORDER) ?: "{}"
-                handleNewOrder(title, body, json)
+                handleNewOrder(IncomingOrder.parse(title, body, json))
             }
             ACTION_STOP_SIREN -> stopSiren()
         }
         return START_STICKY
     }
 
-    private fun handleNewOrder(title: String, body: String, json: String) {
-        Prefs.pendingOrderJson = json
-        val signature = "$title|$body|$json"
+    private fun handleNewOrder(order: IncomingOrder) {
+        Prefs.pendingOrderJson = order.rawJson
+        val signature = "${order.orderId}|${order.title}|${order.body}|${order.distanceKm}"
         if (signature == Prefs.lastOrderSignature) return
         Prefs.lastOrderSignature = signature
 
-        wakeLock?.acquire(3 * 60 * 1000L)
-        if (Prefs.sirenEnabled) {
-            siren?.start()
-        }
-        NotificationHelper.showIncomingOrder(this, title, body, json)
-        OverlayBubbleService.showOrder(this, title)
+        cpuLock?.acquire(3 * 60 * 1000L)
+        runCatching { screenLock?.acquire(60_000L) }
+        if (Prefs.sirenEnabled) siren?.start()
+
+        NotificationHelper.showIncomingOrder(this, order)
+        OverlayBubbleService.showOrder(this, order)
 
         val alert = Intent(this, OrderAlertActivity::class.java)
-            .putExtra(OrderAlertActivity.EXTRA_TITLE, title)
-            .putExtra(OrderAlertActivity.EXTRA_BODY, body)
-            .putExtra(OrderAlertActivity.EXTRA_ORDER, json)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        val pi = PendingIntent.getActivity(
-            this,
-            77,
-            alert,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        runCatching { pi.send() }
-        startActivity(alert)
+            .putExtra(OrderAlertActivity.EXTRA_TITLE, order.title)
+            .putExtra(OrderAlertActivity.EXTRA_BODY, order.summary)
+            .putExtra(OrderAlertActivity.EXTRA_ORDER, order.rawJson)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NO_USER_ACTION)
+        runCatching { startActivity(alert) }
+        val km = getSystemService(KeyguardManager::class.java)
+        if (km.isKeyguardLocked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Full-screen notification is the lock-screen path; activity still tries to wake.
+        }
     }
 
     private fun stopSiren() {
         siren?.stop()
-        if (wakeLock?.isHeld == true) wakeLock?.release()
+        if (cpuLock?.isHeld == true) cpuLock?.release()
+        if (screenLock?.isHeld == true) screenLock?.release()
     }
 
     override fun onDestroy() {
@@ -104,25 +109,23 @@ class OrderWatchService : Service() {
         const val EXTRA_ORDER = "order"
 
         fun start(context: Context) {
-            val intent = Intent(context, OrderWatchService::class.java)
-            context.startForegroundService(intent)
+            context.startForegroundService(Intent(context, OrderWatchService::class.java))
         }
 
         fun notifyNewOrder(context: Context, title: String, body: String, json: String = "{}") {
-            val parsed = runCatching { JSONObject(json) }.getOrNull()
-            val resolvedTitle = parsed?.optString("title").takeUnless { it.isNullOrBlank() } ?: title
-            val resolvedBody = parsed?.optString("body").takeUnless { it.isNullOrBlank() } ?: body
+            val order = IncomingOrder.parse(title, body, json)
             val intent = Intent(context, OrderWatchService::class.java)
                 .setAction(ACTION_NEW_ORDER)
-                .putExtra(EXTRA_TITLE, resolvedTitle)
-                .putExtra(EXTRA_BODY, resolvedBody)
+                .putExtra(EXTRA_TITLE, order.title)
+                .putExtra(EXTRA_BODY, order.summary)
                 .putExtra(EXTRA_ORDER, json)
             context.startForegroundService(intent)
         }
 
         fun stopSiren(context: Context) {
-            val intent = Intent(context, OrderWatchService::class.java).setAction(ACTION_STOP_SIREN)
-            context.startForegroundService(intent)
+            context.startForegroundService(
+                Intent(context, OrderWatchService::class.java).setAction(ACTION_STOP_SIREN)
+            )
         }
     }
 }

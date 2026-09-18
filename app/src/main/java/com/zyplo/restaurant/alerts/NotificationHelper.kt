@@ -8,15 +8,15 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.RingtoneManager
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.zyplo.restaurant.R
+import com.zyplo.restaurant.data.IncomingOrder
 import com.zyplo.restaurant.ui.MainActivity
 import com.zyplo.restaurant.ui.OrderAlertActivity
 
 object NotificationHelper {
-    const val CHANNEL_ORDERS = "zyplo_orders"
+    const val CHANNEL_ORDERS = "zyplo_orders_lockscreen"
     const val CHANNEL_WATCH = "zyplo_watch"
     const val CHANNEL_LOCATION = "zyplo_location"
     const val CHANNEL_OVERLAY = "zyplo_overlay"
@@ -107,15 +107,15 @@ object NotificationHelper {
             .build()
     }
 
-    fun showIncomingOrder(context: Context, title: String, body: String, orderJson: String) {
+    fun showIncomingOrder(context: Context, order: IncomingOrder) {
         val fullScreen = PendingIntent.getActivity(
             context,
             88,
             Intent(context, OrderAlertActivity::class.java)
-                .putExtra(OrderAlertActivity.EXTRA_TITLE, title)
-                .putExtra(OrderAlertActivity.EXTRA_BODY, body)
-                .putExtra(OrderAlertActivity.EXTRA_ORDER, orderJson)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                .putExtra(OrderAlertActivity.EXTRA_TITLE, order.title)
+                .putExtra(OrderAlertActivity.EXTRA_BODY, order.summary)
+                .putExtra(OrderAlertActivity.EXTRA_ORDER, order.rawJson)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NO_USER_ACTION),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val open = PendingIntent.getActivity(
@@ -128,16 +128,22 @@ object NotificationHelper {
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ORDERS)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(title)
-            .setContentText(body)
+            .setContentTitle(order.title)
+            .setContentText(order.summary)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(order.summary))
             .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
+            .setOngoing(true)
             .setContentIntent(open)
             .setFullScreenIntent(fullScreen, true)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setTimeoutAfter(3 * 60 * 1000L)
             .build()
         NotificationManagerCompat.from(context).notify(ID_ORDER, notification)
+    }
+
+    fun showIncomingOrder(context: Context, title: String, body: String, orderJson: String) {
+        showIncomingOrder(context, IncomingOrder.parse(title, body, orderJson))
     }
 }

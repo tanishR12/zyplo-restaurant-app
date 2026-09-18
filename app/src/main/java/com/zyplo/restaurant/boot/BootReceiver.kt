@@ -12,9 +12,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (!Prefs.setupComplete) return
         OrderWatchService.start(context)
-        if (Prefs.loggedIn) {
-            OverlayBubbleService.start(context)
-            RestaurantLocationService.start(context)
-        }
+        OverlayBubbleService.start(context)
+        RestaurantLocationService.start(context)
     }
 }

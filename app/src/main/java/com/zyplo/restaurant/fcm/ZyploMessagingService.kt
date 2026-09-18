@@ -14,6 +14,8 @@ class ZyploMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
         val type = (data["type"] ?: data["event"] ?: data["kind"] ?: "").lowercase()
+        if (type.contains("silent") || type.contains("ping")) return
+
         val title = message.notification?.title
             ?: data["title"]
             ?: getString(com.zyplo.restaurant.R.string.new_order_title)
@@ -27,11 +29,11 @@ class ZyploMessagingService : FirebaseMessagingService() {
             put("body", body)
         }.toString()
 
-        val isOrder = type.contains("order") ||
-            data.containsKey("order_id") ||
-            data.containsKey("orderId") ||
-            title.contains("order", ignoreCase = true) ||
-            type.isBlank()
+        val isOrder = type.isBlank() ||
+            type.contains("order") ||
+            type.contains("new") ||
+            data.keys.any { it.contains("order", ignoreCase = true) } ||
+            title.contains("order", ignoreCase = true)
 
         if (isOrder) {
             OrderWatchService.notifyNewOrder(applicationContext, title, body, json)

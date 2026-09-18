@@ -24,11 +24,11 @@ object OrderDetectorJs {
         var url = '';
         if (typeof arguments[0] === 'string') url = arguments[0];
         else if (arguments[0] && arguments[0].url) url = arguments[0].url;
-        if (/order/i.test(url)) {
+            if (/order/i.test(url)) {
           var clone = res.clone();
           clone.text().then(function(t){
-            if (/pending|incoming|new[_ ]order|status":"new|awaiting/i.test(t)) {
-              send({source:'fetch', url:url});
+            if (/pending|incoming|new[_ ]order|status":"new|awaiting|placed|confirmed/i.test(t)) {
+              send(t.length > 4000 ? {source:'fetch', url:url, body:t.slice(0,4000)} : (function(){ try { return JSON.parse(t); } catch(e){ return {source:'fetch', url:url, body:t}; } })());
             }
           }).catch(function(){});
         }
