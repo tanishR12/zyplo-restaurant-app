@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="zyplo_purple">#7C5CFF</color>
+    <color name="zyplo_purple_dark">#5B3FD6</color>
+    <color name="zyplo_bg">#F7F4FF</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#111111</color>
+    <color name="text_muted">#6B7280</color>
+    <color name="alert_red">#E11D48</color>
+    <color name="ic_launcher_bg">#7C5CFF</color>
+    <color name="purple_primary">#7C5CFF</color>
+    <color name="surface_white">#FFFFFF</color>
+    <color name="splash_bg">#7C5CFF</color>
+</resources>

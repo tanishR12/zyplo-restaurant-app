@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ZyploRestaurant" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/zyplo_purple</item>
+        <item name="android:statusBarColor">@color/zyplo_purple_dark</item>
+        <item name="android:navigationBarColor">@color/white</item>
+        <item name="android:windowBackground">@color/zyplo_bg</item>
+    </style>
+    <style name="Theme.ZyploRestaurant.Alert" parent="Theme.ZyploRestaurant">
+        <item name="android:windowBackground">@color/alert_red</item>
+        <item name="android:windowShowWallpaper">false</item>
+    </style>
+</resources>
