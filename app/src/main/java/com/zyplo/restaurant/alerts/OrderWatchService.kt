@@ -6,11 +6,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Handler
+import android.os.HandlerThread
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.ServiceCompat
+import com.zyplo.restaurant.data.Config
 import com.zyplo.restaurant.data.IncomingOrder
 import com.zyplo.restaurant.data.Prefs
+import com.zyplo.restaurant.orders.LiveOrderSync
 import com.zyplo.restaurant.overlay.OverlayBubbleService
 import com.zyplo.restaurant.ui.OrderAlertActivity
 
@@ -18,6 +22,8 @@ class OrderWatchService : Service() {
     private var siren: SirenPlayer? = null
     private var cpuLock: PowerManager.WakeLock? = null
     private var screenLock: PowerManager.WakeLock? = null
+    private var workerThread: HandlerThread? = null
+    private var worker: Handler? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -33,7 +39,10 @@ class OrderWatchService : Service() {
             PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
             "zyplo:order-screen"
         ).apply { setReferenceCounted(false) }
+        workerThread = HandlerThread("zyplo-live-orders").also { it.start() }
+        worker = Handler(workerThread!!.looper)
         startAsForeground()
+        worker?.post(pollRunnable)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -46,6 +55,7 @@ class OrderWatchService : Service() {
                 handleNewOrder(IncomingOrder.parse(title, body, json))
             }
             ACTION_STOP_SIREN -> stopSiren()
+            ACTION_SYNC -> worker?.post { runCatching { LiveOrderSync.tick(this) } }
         }
         return START_STICKY
     }
@@ -87,8 +97,19 @@ class OrderWatchService : Service() {
     }
 
     override fun onDestroy() {
+        worker?.removeCallbacksAndMessages(null)
+        workerThread?.quitSafely()
+        worker = null
+        workerThread = null
         stopSiren()
         super.onDestroy()
+    }
+
+    private val pollRunnable = object : Runnable {
+        override fun run() {
+            runCatching { LiveOrderSync.tick(this@OrderWatchService) }
+            worker?.postDelayed(this, Config.LIVE_POLL_MS)
+        }
     }
 
     private fun startAsForeground() {
@@ -111,6 +132,7 @@ class OrderWatchService : Service() {
         @Volatile private var lastAlertAt = 0L
         const val ACTION_NEW_ORDER = "com.zyplo.restaurant.NEW_ORDER"
         const val ACTION_STOP_SIREN = "com.zyplo.restaurant.STOP_SIREN"
+        const val ACTION_SYNC = "com.zyplo.restaurant.SYNC_ORDERS"
         const val EXTRA_TITLE = "title"
         const val EXTRA_BODY = "body"
         const val EXTRA_ORDER = "order"
@@ -135,6 +157,14 @@ class OrderWatchService : Service() {
             runCatching {
                 context.startForegroundService(
                     Intent(context, OrderWatchService::class.java).setAction(ACTION_STOP_SIREN)
+                )
+            }
+        }
+
+        fun syncNow(context: Context) {
+            runCatching {
+                context.startForegroundService(
+                    Intent(context, OrderWatchService::class.java).setAction(ACTION_SYNC)
                 )
             }
         }

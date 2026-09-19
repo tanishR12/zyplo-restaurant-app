@@ -1,5 +1,7 @@
 package com.zyplo.restaurant.bridge
 
+import android.os.Handler
+import android.os.Looper
 import android.webkit.JavascriptInterface
 import com.zyplo.restaurant.alerts.OrderWatchService
 import com.zyplo.restaurant.data.Prefs
@@ -35,8 +37,32 @@ class WebAppBridge(
 
     @JavascriptInterface
     fun setLoggedIn(value: Boolean) {
+        val was = Prefs.loggedIn
         Prefs.loggedIn = value
-        if (value) onLoggedIn()
+        if (value && !was) {
+            Handler(Looper.getMainLooper()).post { onLoggedIn() }
+        }
+    }
+
+    @JavascriptInterface
+    fun saveRestaurantSession(raw: String) {
+        val obj = runCatching { JSONObject(raw) }.getOrNull()
+        val id = obj?.optString("restaurant_id").orEmpty().ifBlank { null }
+        val token = obj?.optString("session_token").orEmpty().ifBlank { null }
+        val email = obj?.optString("email").orEmpty().ifBlank { null }
+        val changed = Prefs.restaurantId != id || Prefs.restaurantSessionToken != token
+        Prefs.saveRestaurantSession(id, token, email)
+        if (!id.isNullOrBlank() && !token.isNullOrBlank()) {
+            Prefs.loggedIn = true
+            if (changed) {
+                Prefs.registeredPushToken = null
+                Prefs.liveOrdersSeeded = false
+                Handler(Looper.getMainLooper()).post {
+                    onLoggedIn()
+                    OrderWatchService.syncNow(context)
+                }
+            }
+        }
     }
 
     @JavascriptInterface

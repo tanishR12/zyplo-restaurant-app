@@ -50,6 +50,9 @@ data class IncomingOrder(
         fun parse(title: String, body: String, json: String): IncomingOrder {
             val obj = runCatching { JSONObject(json) }.getOrNull()
             val orderId = firstString(obj, "order_id", "orderId")
+                ?: obj?.takeIf { it.has("status") || it.has("order_number") || it.has("total_amount") }
+                    ?.optString("id")
+                    ?.takeIf { it.isNotBlank() && it != "null" }
             val rider = firstString(obj, "rider_name", "riderName", "driver_name", "driverName", "rider")
             val address = firstString(obj, "address", "drop_address", "dropAddress", "delivery_address", "customer_address")
             val dropLat = firstDouble(obj, "drop_lat", "dropLat", "customer_lat", "dest_lat", "latitude", "lat")

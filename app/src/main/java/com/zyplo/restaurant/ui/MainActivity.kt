@@ -135,7 +135,7 @@ class MainActivity : AppCompatActivity() {
             useWideViewPort = true
             loadWithOverviewMode = true
             mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 ZyploRestaurant/1.2.1"
+            userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 ZyploRestaurant/1.3"
         }
         webView.addJavascriptInterface(WebAppBridge(this) {
             runOnUiThread { onPartnerReady() }
@@ -310,6 +310,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun onPartnerReady() {
         OrderWatchService.start(this)
+        OrderWatchService.syncNow(this)
         OverlayBubbleService.start(this)
         RestaurantLocationService.start(this)
     }
@@ -325,6 +326,8 @@ class MainActivity : AppCompatActivity() {
         messaging.subscribeToTopic("lovebul_restaurant")
         messaging.token.addOnSuccessListener { token ->
             Prefs.fcmToken = token
+            Prefs.registeredPushToken = null
+            runCatching { com.zyplo.restaurant.orders.LiveOrderSync.registerPushIfNeeded() }
             if (::webView.isInitialized) {
                 webView.evaluateJavascript(
                     "window.localStorage.setItem('zyplo_fcm_token','$token'); window.dispatchEvent(new CustomEvent('zyplo-fcm-token',{detail:'$token'}));",

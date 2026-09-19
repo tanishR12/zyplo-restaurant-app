@@ -61,6 +61,10 @@ object WebCompatJs {
             try { session = !!localStorage.getItem('restaurant_session'); } catch(e) {}
             var onLogin = path.indexOf('login') !== -1 || path.indexOf('register') !== -1;
             if (session && !onLogin && window.ZyploApp && ZyploApp.setLoggedIn) ZyploApp.setLoggedIn(true);
+            try {
+              var raw = localStorage.getItem('restaurant_session');
+              if (raw && window.ZyploApp && ZyploApp.saveRestaurantSession) ZyploApp.saveRestaurantSession(raw);
+            } catch(e) {}
           } catch(e) {}
         };
       } catch(e) {}
