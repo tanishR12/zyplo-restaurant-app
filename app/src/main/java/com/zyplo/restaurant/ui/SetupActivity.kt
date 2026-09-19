@@ -25,11 +25,15 @@ class SetupActivity : AppCompatActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
         refreshStatus()
+        askBackgroundIfNeeded()
     }
 
     private val backgroundLocation = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { refreshStatus() }
+    ) {
+        refreshStatus()
+        DeviceSettings.promptNextSpecialSetting(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,12 +69,33 @@ class SetupActivity : AppCompatActivity() {
             openPortal()
         }
         refreshStatus()
+        requestAllInApp()
     }
 
     override fun onResume() {
         super.onResume()
         if (!::status.isInitialized) return
         refreshStatus()
+        if (DeviceSettings.missingRuntimePermissions(this).isEmpty()) {
+            DeviceSettings.promptNextSpecialSetting(this)
+        }
+    }
+
+    private fun requestAllInApp() {
+        val missing = DeviceSettings.missingRuntimePermissions(this)
+        if (missing.isNotEmpty()) {
+            runtimePermissions.launch(missing)
+        } else {
+            askBackgroundIfNeeded()
+        }
+    }
+
+    private fun askBackgroundIfNeeded() {
+        if (DeviceSettings.needsBackgroundLocation(this)) {
+            backgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        } else {
+            DeviceSettings.promptNextSpecialSetting(this)
+        }
     }
 
     private fun askNotifications() {
@@ -88,11 +113,6 @@ class SetupActivity : AppCompatActivity() {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             )
         )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            status.postDelayed({
-                backgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-            }, 400)
-        }
     }
 
     private fun askOverlay() {

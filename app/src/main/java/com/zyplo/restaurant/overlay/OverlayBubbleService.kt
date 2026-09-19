@@ -162,7 +162,7 @@ class OverlayBubbleService : LifecycleService() {
         fun start(context: Context) {
             if (!Prefs.overlayEnabled) return
             if (!android.provider.Settings.canDrawOverlays(context)) return
-            context.startForegroundService(Intent(context, OverlayBubbleService::class.java))
+            runCatching { context.startForegroundService(Intent(context, OverlayBubbleService::class.java)) }
         }
 
         fun showOrder(context: Context, order: IncomingOrder) {

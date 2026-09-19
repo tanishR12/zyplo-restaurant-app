@@ -10,6 +10,7 @@ import com.zyplo.restaurant.overlay.OverlayBubbleService
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
+        Prefs.init(context)
         if (!Prefs.setupComplete) return
         OrderWatchService.start(context)
         OverlayBubbleService.start(context)

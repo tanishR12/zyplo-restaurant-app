@@ -5,7 +5,11 @@
         <domain includeSubdomains="true">lovable.app</domain>
         <domain includeSubdomains="true">lovable.dev</domain>
         <domain includeSubdomains="true">googleapis.com</domain>
+        <domain includeSubdomains="true">gstatic.com</domain>
         <domain includeSubdomains="true">firebaseio.com</domain>
+        <domain includeSubdomains="true">firebaseapp.com</domain>
+        <domain includeSubdomains="true">firebasestorage.app</domain>
         <domain includeSubdomains="true">google.com</domain>
+        <domain includeSubdomains="true">supabase.co</domain>
     </domain-config>
 </network-security-config>

@@ -1,7 +1,6 @@
 package com.zyplo.restaurant.alerts
 
 import android.app.KeyguardManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -109,7 +108,9 @@ class OrderWatchService : Service() {
         const val EXTRA_ORDER = "order"
 
         fun start(context: Context) {
-            context.startForegroundService(Intent(context, OrderWatchService::class.java))
+            runCatching {
+                context.startForegroundService(Intent(context, OrderWatchService::class.java))
+            }
         }
 
         fun notifyNewOrder(context: Context, title: String, body: String, json: String = "{}") {
@@ -119,13 +120,15 @@ class OrderWatchService : Service() {
                 .putExtra(EXTRA_TITLE, order.title)
                 .putExtra(EXTRA_BODY, order.summary)
                 .putExtra(EXTRA_ORDER, json)
-            context.startForegroundService(intent)
+            runCatching { context.startForegroundService(intent) }
         }
 
         fun stopSiren(context: Context) {
-            context.startForegroundService(
-                Intent(context, OrderWatchService::class.java).setAction(ACTION_STOP_SIREN)
-            )
+            runCatching {
+                context.startForegroundService(
+                    Intent(context, OrderWatchService::class.java).setAction(ACTION_STOP_SIREN)
+                )
+            }
         }
     }
 }

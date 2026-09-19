@@ -42,4 +42,20 @@ object Prefs {
     var lastOrderSignature: String?
         get() = prefs.getString("last_order_sig", null)
         set(value) = prefs.edit().putString("last_order_sig", value).apply()
+
+    var overlayPrompted: Boolean
+        get() = prefs.getBoolean("overlay_prompted", false)
+        set(value) = prefs.edit().putBoolean("overlay_prompted", value).apply()
+
+    var batteryPrompted: Boolean
+        get() = prefs.getBoolean("battery_prompted", false)
+        set(value) = prefs.edit().putBoolean("battery_prompted", value).apply()
+
+    var fullScreenPrompted: Boolean
+        get() = prefs.getBoolean("fullscreen_prompted", false)
+        set(value) = prefs.edit().putBoolean("fullscreen_prompted", value).apply()
+
+    var autostartPrompted: Boolean
+        get() = prefs.getBoolean("autostart_prompted", false)
+        set(value) = prefs.edit().putBoolean("autostart_prompted", value).apply()
 }

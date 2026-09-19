@@ -6,10 +6,14 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.RingtoneManager
+import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import com.zyplo.restaurant.R
 import com.zyplo.restaurant.data.IncomingOrder
 import com.zyplo.restaurant.ui.MainActivity
@@ -140,7 +144,12 @@ object NotificationHelper {
             .setFullScreenIntent(fullScreen, true)
             .setTimeoutAfter(3 * 60 * 1000L)
             .build()
-        NotificationManagerCompat.from(context).notify(ID_ORDER, notification)
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        runCatching { NotificationManagerCompat.from(context).notify(ID_ORDER, notification) }
     }
 
     fun showIncomingOrder(context: Context, title: String, body: String, orderJson: String) {

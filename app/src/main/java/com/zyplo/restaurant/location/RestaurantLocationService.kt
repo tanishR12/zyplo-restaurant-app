@@ -76,7 +76,7 @@ class RestaurantLocationService : LifecycleService() {
         fun start(context: Context) {
             val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
             if (fine != PackageManager.PERMISSION_GRANTED) return
-            context.startForegroundService(Intent(context, RestaurantLocationService::class.java))
+            runCatching { context.startForegroundService(Intent(context, RestaurantLocationService::class.java)) }
         }
     }
 }

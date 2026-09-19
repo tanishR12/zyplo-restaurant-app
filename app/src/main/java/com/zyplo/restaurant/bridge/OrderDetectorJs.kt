@@ -11,7 +11,9 @@ object OrderDetectorJs {
   function markLoggedIn(){
     try {
       var path = (location.pathname||'').toLowerCase();
-      var logged = path.indexOf('restaurant') !== -1 && path.indexOf('login') === -1 && path.indexOf('register') === -1;
+      var session = false;
+      try { session = !!localStorage.getItem('restaurant_session'); } catch(e) {}
+      var logged = session || (path.indexOf('restaurant') !== -1 && path.indexOf('login') === -1 && path.indexOf('register') === -1);
       ZyploApp.setLoggedIn(!!logged);
     } catch(e) {}
   }

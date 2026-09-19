@@ -9,7 +9,18 @@ object Config {
         "www.zyplo.in",
         "lovable.dev",
         "lovable.app",
-        "lovableproject.com"
+        "lovableproject.com",
+        "supabase.co",
+        "supabase.in",
+        "firebaseapp.com",
+        "web.app",
+        "googleapis.com",
+        "gstatic.com",
+        "google.com",
+        "google.co.in",
+        "gvt1.com",
+        "firebaseio.com",
+        "firebasestorage.app"
     )
 
     fun isTrustedUrl(url: String?): Boolean {
@@ -20,6 +31,20 @@ object Config {
         } catch (_: Exception) {
             false
         }
+    }
+
+    fun shouldOpenExternally(url: String): Boolean {
+        val lower = url.lowercase()
+        return lower.startsWith("tel:") ||
+            lower.startsWith("mailto:") ||
+            lower.startsWith("sms:") ||
+            lower.startsWith("geo:") ||
+            lower.startsWith("intent:") ||
+            lower.startsWith("market:") ||
+            lower.startsWith("whatsapp:") ||
+            lower.contains("://wa.me") ||
+            lower.contains("api.whatsapp.com") ||
+            lower.contains("play.google.com")
     }
 
     fun looksLoggedIn(url: String?): Boolean {

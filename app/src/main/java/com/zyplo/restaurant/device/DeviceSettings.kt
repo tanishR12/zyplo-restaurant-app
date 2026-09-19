@@ -1,14 +1,18 @@
 package com.zyplo.restaurant.device
 
+import android.Manifest
 import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import com.zyplo.restaurant.data.Prefs
 
 object DeviceSettings {
     fun notificationsOn(context: Context): Boolean {
@@ -16,6 +20,71 @@ object DeviceSettings {
     }
 
     fun overlayOn(context: Context): Boolean = Settings.canDrawOverlays(context)
+
+    fun missingRuntimePermissions(context: Context): Array<String> {
+        val needed = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            needed += Manifest.permission.POST_NOTIFICATIONS
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            needed += Manifest.permission.ACCESS_FINE_LOCATION
+            needed += Manifest.permission.ACCESS_COARSE_LOCATION
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            needed += Manifest.permission.CAMERA
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            needed += Manifest.permission.RECORD_AUDIO
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED
+        ) {
+            needed += Manifest.permission.READ_MEDIA_IMAGES
+        }
+        return needed.distinct().toTypedArray()
+    }
+
+    fun needsBackgroundLocation(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+        val bg = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        return fine == PackageManager.PERMISSION_GRANTED && bg != PackageManager.PERMISSION_GRANTED
+    }
+
+    fun promptNextSpecialSetting(context: Context): Boolean {
+        if (!overlayOn(context) && !Prefs.overlayPrompted) {
+            Prefs.overlayPrompted = true
+            context.startActivity(
+                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            return true
+        }
+        if (!batteryUnrestricted(context) && !Prefs.batteryPrompted) {
+            Prefs.batteryPrompted = true
+            runCatching {
+                context.startActivity(
+                    Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                        .setData(Uri.parse("package:${context.packageName}"))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }
+            return true
+        }
+        if (!fullScreenAlertsOn(context) && !Prefs.fullScreenPrompted) {
+            Prefs.fullScreenPrompted = true
+            openFullScreenIntentSettings(context)
+            return true
+        }
+        if (!Prefs.autostartPrompted) {
+            Prefs.autostartPrompted = true
+            openAutostart(context)
+            return true
+        }
+        return false
+    }
 
     fun batteryUnrestricted(context: Context): Boolean {
         val pm = context.getSystemService(PowerManager::class.java)
@@ -43,7 +112,6 @@ object DeviceSettings {
     }
 
     fun openAutostart(context: Context) {
-        val pkg = context.packageName
         val candidates = listOf(
             Intent().setComponent(ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")),
             Intent("miui.intent.action.OP_AUTO_START").addCategory(Intent.CATEGORY_DEFAULT),
