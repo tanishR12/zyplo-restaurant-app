@@ -29,11 +29,12 @@ class ZyploMessagingService : FirebaseMessagingService() {
             put("body", body)
         }.toString()
 
-        val isOrder = type.isBlank() ||
-            type.contains("order") ||
-            type.contains("new") ||
-            data.keys.any { it.contains("order", ignoreCase = true) } ||
-            title.contains("order", ignoreCase = true)
+        val isOrder = type.contains("order") ||
+            type.contains("incoming") ||
+            data.containsKey("order_id") ||
+            data.containsKey("orderId") ||
+            title.contains("new order", ignoreCase = true) ||
+            title.contains("incoming order", ignoreCase = true)
 
         if (isOrder) {
             OrderWatchService.notifyNewOrder(applicationContext, title, body, json)

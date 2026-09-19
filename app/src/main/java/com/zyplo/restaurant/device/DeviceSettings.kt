@@ -38,11 +38,6 @@ object DeviceSettings {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             needed += Manifest.permission.RECORD_AUDIO
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED
-        ) {
-            needed += Manifest.permission.READ_MEDIA_IMAGES
-        }
         return needed.distinct().toTypedArray()
     }
 
@@ -80,8 +75,8 @@ object DeviceSettings {
         }
         if (!Prefs.autostartPrompted) {
             Prefs.autostartPrompted = true
-            openAutostart(context)
-            return true
+            val openedOem = openAutostart(context)
+            return openedOem
         }
         return false
     }
@@ -111,7 +106,7 @@ object DeviceSettings {
         openAppDetails(context)
     }
 
-    fun openAutostart(context: Context) {
+    fun openAutostart(context: Context): Boolean {
         val candidates = listOf(
             Intent().setComponent(ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")),
             Intent("miui.intent.action.OP_AUTO_START").addCategory(Intent.CATEGORY_DEFAULT),
@@ -128,10 +123,10 @@ object DeviceSettings {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             if (intent.resolveActivity(context.packageManager) != null) {
                 runCatching { context.startActivity(intent) }
-                return
+                return true
             }
         }
-        openAppDetails(context)
+        return false
     }
 
     fun openAppDetails(context: Context) {

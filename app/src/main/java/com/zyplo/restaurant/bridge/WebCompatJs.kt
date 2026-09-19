@@ -14,34 +14,6 @@ object WebCompatJs {
       window.dispatchEvent(new CustomEvent('zyplo-fcm-token', {detail: token}));
     }
 
-    function saveRestaurantFcm(){
-      if (!token) return;
-      var rest = null;
-      try { rest = JSON.parse(localStorage.getItem('restaurant_session') || 'null'); } catch(e) {}
-      if (!rest || !rest.restaurant_id) return;
-      var anon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ampjc2N5cXF4a2VpcGtjY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwOTg4MDEsImV4cCI6MjA2OTY3NDgwMX0.ZUpcDDVxUiZ3uNgF0Mbb3HjqhY9yc_B2xWeUARDk4Yc';
-      var body = JSON.stringify({
-        restaurant_id: rest.restaurant_id,
-        session_token: rest.session_token,
-        email: rest.email,
-        action: 'register_fcm',
-        fcm_token: token,
-        token: token,
-        device_type: 'android-fcm',
-        platform: 'android'
-      });
-      fetch('https://itjjcscyqqxkeipkccgl.supabase.co/functions/v1/get-restaurant-orders', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','apikey':anon,'Authorization':'Bearer '+(rest.session_token||anon)},
-        body: body
-      }).catch(function(){});
-      fetch('https://itjjcscyqqxkeipkccgl.supabase.co/functions/v1/restaurant-auth', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','apikey':anon,'Authorization':'Bearer '+(rest.session_token||anon)},
-        body: JSON.stringify({action:'register_fcm', restaurant_id: rest.restaurant_id, session_token: rest.session_token, fcm_token: token, device_type:'android-fcm'})
-      }).catch(function(){});
-    }
-
     if (!window.__zyploWebCompat) {
       window.__zyploWebCompat = true;
       if (!window.Notification) {
@@ -85,16 +57,14 @@ object WebCompatJs {
           _push.apply(this, arguments);
           try {
             var path = (location.pathname||'').toLowerCase();
-            var logged = path.indexOf('restaurant') !== -1 && path.indexOf('login') === -1 && path.indexOf('register') === -1;
-            if (logged && window.ZyploApp && ZyploApp.setLoggedIn) ZyploApp.setLoggedIn(true);
-            saveRestaurantFcm();
+            var session = false;
+            try { session = !!localStorage.getItem('restaurant_session'); } catch(e) {}
+            var onLogin = path.indexOf('login') !== -1 || path.indexOf('register') !== -1;
+            if (session && !onLogin && window.ZyploApp && ZyploApp.setLoggedIn) ZyploApp.setLoggedIn(true);
           } catch(e) {}
         };
       } catch(e) {}
     }
-
-    saveRestaurantFcm();
-    setTimeout(saveRestaurantFcm, 2500);
   } catch(e) {}
 })();
 """

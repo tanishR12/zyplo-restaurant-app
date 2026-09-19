@@ -13,6 +13,11 @@ class WebAppBridge(
 ) {
     @JavascriptInterface
     fun onNewOrder(payload: String) {
+        val obj = runCatching { JSONObject(payload) }.getOrNull()
+        val source = obj?.optString("source").orEmpty()
+        if (source == "dom" || source == "fetch") return
+        val orderId = obj?.optString("order_id").orEmpty().ifBlank { obj?.optString("orderId").orEmpty() }
+        if (orderId.isBlank() && payload.length > 2000) return
         OrderWatchService.notifyNewOrder(
             context,
             "New restaurant order",

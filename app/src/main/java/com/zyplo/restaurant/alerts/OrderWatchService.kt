@@ -51,9 +51,14 @@ class OrderWatchService : Service() {
     }
 
     private fun handleNewOrder(order: IncomingOrder) {
+        if (!order.isRealAlert) return
         Prefs.pendingOrderJson = order.rawJson
-        val signature = "${order.orderId}|${order.title}|${order.body}|${order.distanceKm}"
+        val signature = order.orderId?.takeIf { it.isNotBlank() }
+            ?: "${order.title}|${order.body}"
         if (signature == Prefs.lastOrderSignature) return
+        val now = System.currentTimeMillis()
+        if (now - lastAlertAt < 8_000L && order.orderId.isNullOrBlank()) return
+        lastAlertAt = now
         Prefs.lastOrderSignature = signature
 
         cpuLock?.acquire(3 * 60 * 1000L)
@@ -92,15 +97,18 @@ class OrderWatchService : Service() {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK or
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         } else 0
-        ServiceCompat.startForeground(
-            this,
-            NotificationHelper.ID_WATCH,
-            NotificationHelper.watchNotification(this),
-            types
-        )
+        runCatching {
+            ServiceCompat.startForeground(
+                this,
+                NotificationHelper.ID_WATCH,
+                NotificationHelper.watchNotification(this),
+                types
+            )
+        }
     }
 
     companion object {
+        @Volatile private var lastAlertAt = 0L
         const val ACTION_NEW_ORDER = "com.zyplo.restaurant.NEW_ORDER"
         const val ACTION_STOP_SIREN = "com.zyplo.restaurant.STOP_SIREN"
         const val EXTRA_TITLE = "title"

@@ -49,8 +49,12 @@ class MainActivity : AppCompatActivity() {
         pendingChooserParams = null
     }
 
-    private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
-        launchFileChooser()
+    private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) launchFileChooser() else {
+            fileCallback?.onReceiveValue(null)
+            fileCallback = null
+            pendingChooserParams = null
+        }
     }
 
     private val runtimePermissions = registerForActivityResult(
@@ -70,7 +74,6 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.webView)
         setupWebView()
         refreshFcmToken()
-        OrderWatchService.start(this)
         maybeStartPartnerServices()
         requestAllInAppPermissions()
         val startUrl = if (intent.getBooleanExtra(EXTRA_OPEN_ORDERS, false)) {
@@ -94,9 +97,6 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         if (::webView.isInitialized) webView.onResume()
         injectWebsiteBridge()
-        if (DeviceSettings.missingRuntimePermissions(this).isEmpty()) {
-            DeviceSettings.promptNextSpecialSetting(this)
-        }
     }
 
     override fun onPause() {
@@ -135,7 +135,7 @@ class MainActivity : AppCompatActivity() {
             useWideViewPort = true
             loadWithOverviewMode = true
             mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 ZyploRestaurant/1.2"
+            userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 ZyploRestaurant/1.2.1"
         }
         webView.addJavascriptInterface(WebAppBridge(this) {
             runOnUiThread { onPartnerReady() }
@@ -151,7 +151,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView, url: String) {
                 Prefs.lastPortalUrl = url
-                if (Config.looksLoggedIn(url) || Prefs.loggedIn) {
+                if (Config.looksLoggedIn(url)) {
                     Prefs.loggedIn = true
                     onPartnerReady()
                 }

@@ -38,10 +38,18 @@ data class IncomingOrder(
             else String.format("%.1f km to customer", km)
         }
 
+    val isRealAlert: Boolean
+        get() {
+            val obj = runCatching { JSONObject(rawJson) }.getOrNull() ?: return true
+            val source = obj.optString("source")
+            if (source == "dom" || source == "fetch") return !orderId.isNullOrBlank()
+            return true
+        }
+
     companion object {
         fun parse(title: String, body: String, json: String): IncomingOrder {
             val obj = runCatching { JSONObject(json) }.getOrNull()
-            val orderId = firstString(obj, "order_id", "orderId", "id")
+            val orderId = firstString(obj, "order_id", "orderId")
             val rider = firstString(obj, "rider_name", "riderName", "driver_name", "driverName", "rider")
             val address = firstString(obj, "address", "drop_address", "dropAddress", "delivery_address", "customer_address")
             val dropLat = firstDouble(obj, "drop_lat", "dropLat", "customer_lat", "dest_lat", "latitude", "lat")
