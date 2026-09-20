@@ -25,7 +25,15 @@ object Prefs {
 
     var lastPortalUrl: String
         get() = prefs.getString("last_url", Config.PORTAL_URL) ?: Config.PORTAL_URL
-        set(value) = prefs.edit().putString("last_url", value).apply()
+        set(value) {
+            if (value.isBlank()) return
+            if (Config.isLoginUrl(value) && hasRestaurantSession) return
+            prefs.edit().putString("last_url", value).apply()
+        }
+
+    var restaurantSessionRaw: String?
+        get() = prefs.getString("restaurant_session_raw", null)
+        set(value) = prefs.edit().putString("restaurant_session_raw", value).apply()
 
     var pendingOrderJson: String?
         get() = prefs.getString("pending_order", null)
@@ -91,17 +99,21 @@ object Prefs {
         get() = prefs.getString("registered_push_token", null)
         set(value) = prefs.edit().putString("registered_push_token", value).apply()
 
-    fun saveRestaurantSession(id: String?, token: String?, email: String?) {
+    fun saveRestaurantSession(id: String?, token: String?, email: String?, raw: String? = null) {
+        if (id.isNullOrBlank() || token.isNullOrBlank()) return
         restaurantId = id
         restaurantSessionToken = token
         restaurantEmail = email
-        if (id.isNullOrBlank() || token.isNullOrBlank()) {
-            liveOrdersSeeded = false
-            knownPendingIds = emptySet()
-            pendingCount = 0
+        if (!raw.isNullOrBlank()) restaurantSessionRaw = raw
+        else if (restaurantSessionRaw.isNullOrBlank()) {
+            restaurantSessionRaw = org.json.JSONObject()
+                .put("restaurant_id", id)
+                .put("session_token", token)
+                .put("email", email ?: "")
+                .toString()
         }
     }
 
     val hasRestaurantSession: Boolean
-        get() = !restaurantId.isNullOrBlank() && (restaurantSessionToken?.length ?: 0) >= 32
+        get() = !restaurantId.isNullOrBlank() && (restaurantSessionToken?.length ?: 0) >= 16
 }

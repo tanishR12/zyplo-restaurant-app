@@ -3,20 +3,24 @@ package com.zyplo.restaurant.bridge
 object OrderDetectorJs {
     const val SCRIPT = """
 (function(){
-  if (window.__zyploNativeHooked) return;
-  window.__zyploNativeHooked = true;
-  function syncSession(){
+  function restore(){
     try {
       var raw = localStorage.getItem('restaurant_session');
+      if ((!raw || raw === 'null' || raw === '{}') && window.ZyploApp && ZyploApp.restaurantSession) {
+        var nativeSession = ZyploApp.restaurantSession();
+        if (nativeSession) {
+          localStorage.setItem('restaurant_session', nativeSession);
+          raw = nativeSession;
+        }
+      }
       if (raw && window.ZyploApp && ZyploApp.saveRestaurantSession) ZyploApp.saveRestaurantSession(raw);
-      var path = (location.pathname||'').toLowerCase();
-      var onLogin = path.indexOf('login') !== -1 || path.indexOf('register') !== -1;
-      var logged = !!raw && !onLogin;
-      if (window.ZyploApp && ZyploApp.setLoggedIn) ZyploApp.setLoggedIn(!!logged);
+      if (raw && window.ZyploApp && ZyploApp.setLoggedIn) ZyploApp.setLoggedIn(true);
     } catch(e) {}
   }
-  syncSession();
-  setInterval(syncSession, 4000);
+  restore();
+  if (window.__zyploNativeHooked) return;
+  window.__zyploNativeHooked = true;
+  setInterval(restore, 4000);
   try {
     var token = ZyploApp.fcmToken();
     if (token) {

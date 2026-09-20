@@ -37,9 +37,8 @@ object LiveOrderSync {
 
     private fun pollNewBookings(context: Context) {
         val payload = RestaurantApi.listOrders() ?: return
-        if (payload.optString("error") == "session_expired") {
-            Prefs.saveRestaurantSession(null, null, null)
-            Prefs.loggedIn = false
+        val err = payload.optString("error")
+        if (err.equals("session_expired", ignoreCase = true) || err.contains("unauthorized", ignoreCase = true)) {
             return
         }
         val orders = payload.optJSONArray("orders") ?: return

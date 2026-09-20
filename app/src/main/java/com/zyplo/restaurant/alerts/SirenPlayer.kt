@@ -5,12 +5,13 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
-import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import com.zyplo.restaurant.R
 
 class SirenPlayer(private val context: Context) {
     private var player: MediaPlayer? = null
@@ -27,9 +28,7 @@ class SirenPlayer(private val context: Context) {
         stop()
         raiseAlarmVolume()
         requestFocus()
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val uri = Uri.parse("android.resource://${context.packageName}/${R.raw.order_siren}")
         player = MediaPlayer().apply {
             setDataSource(context, uri)
             setAudioAttributes(
@@ -45,10 +44,10 @@ class SirenPlayer(private val context: Context) {
             start()
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 700, 220, 700), 0))
+            vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 500, 120, 500, 120, 800), 0))
         } else {
             @Suppress("DEPRECATION")
-            vibrator.vibrate(longArrayOf(0, 700, 220, 700), 0)
+            vibrator.vibrate(longArrayOf(0, 500, 120, 500, 120, 800), 0)
         }
     }
 

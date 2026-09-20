@@ -17,7 +17,7 @@
     <string name="lock_screen_ok">Lock screen alerts already allowed</string>
     <string name="battery_manual">Open battery settings and set Zyplo Restaurant to Unrestricted.</string>
     <string name="channel_orders">Zyplo Orders</string>
-    <string name="channel_orders_desc">Live restaurant order sirens, including screen off</string>
+    <string name="channel_orders_desc">Loud kitchen siren for live restaurant orders, including screen off</string>
     <string name="channel_watch">Order watch</string>
     <string name="channel_location">Restaurant GPS</string>
     <string name="channel_overlay">Floating order card</string>
@@ -28,8 +28,13 @@
     <string name="overlay_title">Order card</string>
     <string name="overlay_text">Floating order card can appear over other apps</string>
     <string name="new_order_title">New restaurant order</string>
-    <string name="new_order_body">Tap to open and accept the order</string>
-    <string name="open_order">Open order</string>
+    <string name="new_order_body">Accept or reject this live food order</string>
+    <string name="open_order">Open dashboard</string>
+    <string name="accept_order">Accept</string>
+    <string name="reject_order">Reject</string>
+    <string name="order_accepted">Order accepted</string>
+    <string name="order_rejected">Order rejected</string>
+    <string name="order_action_failed">Could not update order. Open the dashboard to finish.</string>
     <string name="silence_siren">Silence siren</string>
     <string name="bubble_idle">Zyplo</string>
     <string name="live_order_badge">LIVE ORDER</string>

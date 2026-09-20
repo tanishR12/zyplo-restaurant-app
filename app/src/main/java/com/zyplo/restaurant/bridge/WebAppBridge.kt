@@ -37,6 +37,10 @@ class WebAppBridge(
 
     @JavascriptInterface
     fun setLoggedIn(value: Boolean) {
+        if (!value && Prefs.hasRestaurantSession) {
+            Prefs.loggedIn = true
+            return
+        }
         val was = Prefs.loggedIn
         Prefs.loggedIn = value
         if (value && !was) {
@@ -45,22 +49,25 @@ class WebAppBridge(
     }
 
     @JavascriptInterface
+    fun restaurantSession(): String = Prefs.restaurantSessionRaw.orEmpty()
+
+    @JavascriptInterface
     fun saveRestaurantSession(raw: String) {
-        val obj = runCatching { JSONObject(raw) }.getOrNull()
-        val id = obj?.optString("restaurant_id").orEmpty().ifBlank { null }
-        val token = obj?.optString("session_token").orEmpty().ifBlank { null }
-        val email = obj?.optString("email").orEmpty().ifBlank { null }
+        if (raw.isBlank() || raw == "null" || raw == "{}") return
+        val obj = runCatching { JSONObject(raw) }.getOrNull() ?: return
+        val id = firstString(obj, "restaurant_id", "restaurantId", "id")
+        val token = firstString(obj, "session_token", "sessionToken", "token", "access_token")
+        val email = firstString(obj, "email", "restaurant_email")
+        if (id.isNullOrBlank() || token.isNullOrBlank()) return
         val changed = Prefs.restaurantId != id || Prefs.restaurantSessionToken != token
-        Prefs.saveRestaurantSession(id, token, email)
-        if (!id.isNullOrBlank() && !token.isNullOrBlank()) {
-            Prefs.loggedIn = true
-            if (changed) {
-                Prefs.registeredPushToken = null
-                Prefs.liveOrdersSeeded = false
-                Handler(Looper.getMainLooper()).post {
-                    onLoggedIn()
-                    OrderWatchService.syncNow(context)
-                }
+        Prefs.saveRestaurantSession(id, token, email, raw)
+        Prefs.loggedIn = true
+        if (changed) {
+            Prefs.registeredPushToken = null
+            Prefs.liveOrdersSeeded = false
+            Handler(Looper.getMainLooper()).post {
+                onLoggedIn()
+                OrderWatchService.syncNow(context)
             }
         }
     }
@@ -74,5 +81,13 @@ class WebAppBridge(
         RestaurantLocationService.lastLat?.let { obj.put("lat", it) }
         RestaurantLocationService.lastLng?.let { obj.put("lng", it) }
         return obj.toString()
+    }
+
+    private fun firstString(obj: JSONObject, vararg keys: String): String? {
+        keys.forEach { key ->
+            val value = obj.optString(key).takeIf { it.isNotBlank() && it != "null" }
+            if (value != null) return value
+        }
+        return null
     }
 }

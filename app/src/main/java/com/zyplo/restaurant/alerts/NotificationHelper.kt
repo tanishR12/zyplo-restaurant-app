@@ -9,7 +9,7 @@ import android.content.Intent
 import android.Manifest
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
-import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -20,7 +20,7 @@ import com.zyplo.restaurant.ui.MainActivity
 import com.zyplo.restaurant.ui.OrderAlertActivity
 
 object NotificationHelper {
-    const val CHANNEL_ORDERS = "zyplo_orders_lockscreen"
+    const val CHANNEL_ORDERS = "zyplo_orders_kitchen_v1"
     const val CHANNEL_WATCH = "zyplo_watch"
     const val CHANNEL_LOCATION = "zyplo_location"
     const val CHANNEL_OVERLAY = "zyplo_overlay"
@@ -32,7 +32,8 @@ object NotificationHelper {
 
     fun ensureChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
-        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        runCatching { manager.deleteNotificationChannel("zyplo_orders_lockscreen") }
+        val sirenUri = Uri.parse("android.resource://${context.packageName}/${R.raw.order_siren}")
         val alarmAttrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -46,7 +47,8 @@ object NotificationHelper {
             ).apply {
                 description = context.getString(R.string.channel_orders_desc)
                 enableVibration(true)
-                setSound(alarmUri, alarmAttrs)
+                vibrationPattern = longArrayOf(0, 500, 120, 500, 120, 800)
+                setSound(sirenUri, alarmAttrs)
                 setBypassDnd(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
@@ -112,6 +114,7 @@ object NotificationHelper {
     }
 
     fun showIncomingOrder(context: Context, order: IncomingOrder) {
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         val fullScreen = PendingIntent.getActivity(
             context,
             88,
@@ -120,7 +123,7 @@ object NotificationHelper {
                 .putExtra(OrderAlertActivity.EXTRA_BODY, order.summary)
                 .putExtra(OrderAlertActivity.EXTRA_ORDER, order.rawJson)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NO_USER_ACTION),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            flags
         )
         val open = PendingIntent.getActivity(
             context,
@@ -128,7 +131,27 @@ object NotificationHelper {
             Intent(context, MainActivity::class.java)
                 .putExtra(MainActivity.EXTRA_OPEN_ORDERS, true)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            flags
+        )
+        val accept = PendingIntent.getBroadcast(
+            context,
+            91,
+            Intent(context, OrderActionReceiver::class.java)
+                .setAction(OrderActionReceiver.ACTION_ACCEPT)
+                .putExtra(OrderWatchService.EXTRA_TITLE, order.title)
+                .putExtra(OrderWatchService.EXTRA_BODY, order.summary)
+                .putExtra(OrderWatchService.EXTRA_ORDER, order.rawJson),
+            flags
+        )
+        val reject = PendingIntent.getBroadcast(
+            context,
+            92,
+            Intent(context, OrderActionReceiver::class.java)
+                .setAction(OrderActionReceiver.ACTION_REJECT)
+                .putExtra(OrderWatchService.EXTRA_TITLE, order.title)
+                .putExtra(OrderWatchService.EXTRA_BODY, order.summary)
+                .putExtra(OrderWatchService.EXTRA_ORDER, order.rawJson),
+            flags
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ORDERS)
             .setSmallIcon(R.drawable.ic_notification)
@@ -142,6 +165,8 @@ object NotificationHelper {
             .setOngoing(true)
             .setContentIntent(open)
             .setFullScreenIntent(fullScreen, true)
+            .addAction(R.drawable.ic_notification, context.getString(R.string.accept_order), accept)
+            .addAction(R.drawable.ic_notification, context.getString(R.string.reject_order), reject)
             .setTimeoutAfter(3 * 60 * 1000L)
             .build()
         if (Build.VERSION.SDK_INT >= 33 &&

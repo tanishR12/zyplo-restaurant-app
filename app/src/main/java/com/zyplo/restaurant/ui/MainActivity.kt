@@ -76,11 +76,7 @@ class MainActivity : AppCompatActivity() {
         refreshFcmToken()
         maybeStartPartnerServices()
         requestAllInAppPermissions()
-        val startUrl = if (intent.getBooleanExtra(EXTRA_OPEN_ORDERS, false)) {
-            Prefs.lastPortalUrl
-        } else {
-            Prefs.lastPortalUrl.ifBlank { Config.PORTAL_URL }
-        }
+        val startUrl = Config.startUrl()
         if (savedInstanceState == null) {
             webView.loadUrl(startUrl)
         } else {
@@ -108,9 +104,15 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.getBooleanExtra(EXTRA_OPEN_ORDERS, false)) {
-            webView.loadUrl(Prefs.lastPortalUrl)
+        if (intent.getBooleanExtra(EXTRA_OPEN_ORDERS, false) ||
+            !intent.getStringExtra(EXTRA_ORDER_ACTION).isNullOrBlank()
+        ) {
             OrderWatchService.stopSiren(this)
+            applyOrderActionFromIntent(intent)
+            val current = webView.url
+            if (Prefs.hasRestaurantSession && Config.isLoginUrl(current)) {
+                webView.loadUrl(Config.DASHBOARD_URL)
+            }
         }
     }
 
@@ -135,7 +137,7 @@ class MainActivity : AppCompatActivity() {
             useWideViewPort = true
             loadWithOverviewMode = true
             mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 ZyploRestaurant/1.4"
+            userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 ZyploRestaurant/1.4.3"
         }
         webView.addJavascriptInterface(WebAppBridge(this) {
             runOnUiThread { onPartnerReady() }
@@ -151,11 +153,12 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView, url: String) {
                 Prefs.lastPortalUrl = url
-                if (Config.looksLoggedIn(url)) {
+                injectWebsiteBridge()
+                if (Prefs.hasRestaurantSession || Config.looksLoggedIn(url)) {
                     Prefs.loggedIn = true
                     onPartnerReady()
                 }
-                injectWebsiteBridge()
+                applyOrderActionFromIntent(intent)
             }
         }
         webView.webChromeClient = object : WebChromeClient() {
@@ -242,6 +245,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun injectWebsiteBridge() {
         if (!::webView.isInitialized) return
+        Prefs.restaurantSessionRaw?.let { raw ->
+            val quoted = org.json.JSONObject.quote(raw)
+            webView.evaluateJavascript(
+                "(function(){try{var n=$quoted;var e=localStorage.getItem('restaurant_session');if(n&&(!e||e==='null'||e==='{}')){localStorage.setItem('restaurant_session', n);}}catch(x){}})();",
+                null
+            )
+        }
         webView.evaluateJavascript(WebCompatJs.SCRIPT, null)
         webView.evaluateJavascript(OrderDetectorJs.SCRIPT, null)
         Prefs.fcmToken?.let { token ->
@@ -250,6 +260,36 @@ class MainActivity : AppCompatActivity() {
                 null
             )
         }
+    }
+
+    private fun applyOrderActionFromIntent(intent: Intent?) {
+        val action = intent?.getStringExtra(EXTRA_ORDER_ACTION) ?: return
+        val orderId = intent.getStringExtra(EXTRA_ORDER_ID).orEmpty()
+        if (!::webView.isInitialized) return
+        val quotedId = org.json.JSONObject.quote(orderId)
+        val quotedAction = org.json.JSONObject.quote(action)
+        webView.evaluateJavascript(
+            """
+            (function(){
+              try {
+                var id = $quotedId;
+                var action = $quotedAction;
+                window.dispatchEvent(new CustomEvent('zyplo-native-order-action', {detail:{id:id, action:action}}));
+                var words = action === 'reject' ? ['reject','decline','cancel'] : ['accept','confirm','approve'];
+                var nodes = Array.prototype.slice.call(document.querySelectorAll('button, [role="button"], a'));
+                for (var i=0;i<nodes.length;i++){
+                  var t = (nodes[i].innerText||nodes[i].textContent||'').toLowerCase();
+                  if (!t) continue;
+                  for (var w=0;w<words.length;w++){
+                    if (t.indexOf(words[w]) !== -1) { nodes[i].click(); return; }
+                  }
+                }
+              } catch(e) {}
+            })();
+            """.trimIndent(),
+            null
+        )
+        intent.removeExtra(EXTRA_ORDER_ACTION)
     }
 
     private fun handleUrl(url: String): Boolean {
@@ -316,7 +356,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun maybeStartPartnerServices() {
-        if (Prefs.loggedIn) onPartnerReady()
+        if (Prefs.loggedIn || Prefs.hasRestaurantSession) onPartnerReady()
     }
 
     private fun refreshFcmToken() {
@@ -339,5 +379,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_OPEN_ORDERS = "open_orders"
+        const val EXTRA_ORDER_ACTION = "order_action"
+        const val EXTRA_ORDER_ID = "order_id"
     }
 }

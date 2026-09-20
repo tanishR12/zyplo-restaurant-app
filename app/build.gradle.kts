@@ -11,8 +11,8 @@ android {
         applicationId = "in.zyplo.restaurant"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.4.0"
+        versionCode = 9
+        versionName = "1.4.3"
     }
 
     buildTypes {

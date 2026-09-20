@@ -11,7 +11,6 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.TextView
 import androidx.core.app.ServiceCompat
 import androidx.lifecycle.LifecycleService
 import com.zyplo.restaurant.R
@@ -54,12 +53,12 @@ class OverlayBubbleService : LifecycleService() {
     }
 
     private fun bindOrder(order: IncomingOrder) {
-        bubble?.findViewById<TextView>(R.id.bubbleBadge)?.visibility = View.VISIBLE
+        bubble?.findViewById<View>(R.id.bubbleBadge)?.visibility = View.VISIBLE
         bubble?.contentDescription = order.title
     }
 
     private fun bindIdle() {
-        bubble?.findViewById<TextView>(R.id.bubbleBadge)?.visibility = View.GONE
+        bubble?.findViewById<View>(R.id.bubbleBadge)?.visibility = View.GONE
         bubble?.contentDescription = getString(R.string.bubble_idle)
     }
 
@@ -80,7 +79,7 @@ class OverlayBubbleService : LifecycleService() {
     private fun showBubble() {
         if (bubble != null) return
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        bubble = LayoutInflater.from(this).inflate(R.layout.view_overlay_bubble, null)
+        bubble = LayoutInflater.from(this).inflate(R.layout.bubble_layout, null)
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,

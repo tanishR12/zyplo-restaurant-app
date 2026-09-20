@@ -13,6 +13,13 @@ object WebCompatJs {
       window.__ZYLO_NATIVE_FCM = token;
       window.dispatchEvent(new CustomEvent('zyplo-fcm-token', {detail: token}));
     }
+    try {
+      var existing = localStorage.getItem('restaurant_session');
+      if ((!existing || existing === 'null') && window.ZyploApp && ZyploApp.restaurantSession) {
+        var nativeSession = ZyploApp.restaurantSession();
+        if (nativeSession) localStorage.setItem('restaurant_session', nativeSession);
+      }
+    } catch(e) {}
 
     if (!window.__zyploWebCompat) {
       window.__zyploWebCompat = true;

@@ -2,6 +2,7 @@ package com.zyplo.restaurant.data
 
 object Config {
     const val PORTAL_URL = "https://zyplo.in/restaurant-login"
+    const val DASHBOARD_URL = "https://zyplo.in/restaurant"
     const val SITE_ORIGIN = "https://zyplo.in"
     const val SUPABASE_URL = "https://itjjcscyqqxkeipkccgl.supabase.co"
     const val SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ampjc2N5cXF4a2VpcGtjY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwOTg4MDEsImV4cCI6MjA2OTY3NDgwMX0.ZUpcDDVxUiZ3uNgF0Mbb3HjqhY9yc_B2xWeUARDk4Yc"
@@ -58,5 +59,17 @@ object Config {
             !path.contains("restaurant-login") &&
             !path.contains("login") &&
             !path.contains("register")
+    }
+
+    fun isLoginUrl(url: String?): Boolean {
+        val path = android.net.Uri.parse(url ?: return true).path?.lowercase() ?: return true
+        return path.contains("restaurant-login") || path.contains("login") || path.contains("register")
+    }
+
+    fun startUrl(): String {
+        val last = Prefs.lastPortalUrl
+        if (Prefs.hasRestaurantSession && isLoginUrl(last)) return DASHBOARD_URL
+        if (last.isNotBlank()) return last
+        return if (Prefs.hasRestaurantSession) DASHBOARD_URL else PORTAL_URL
     }
 }
