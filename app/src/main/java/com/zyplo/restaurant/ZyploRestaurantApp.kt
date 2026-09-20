@@ -2,6 +2,7 @@ package com.zyplo.restaurant
 
 import android.app.Application
 import com.google.firebase.FirebaseApp
+import com.google.firebase.messaging.FirebaseMessaging
 import com.zyplo.restaurant.alerts.NotificationHelper
 import com.zyplo.restaurant.data.Prefs
 
@@ -11,5 +12,12 @@ class ZyploRestaurantApp : Application() {
         Prefs.init(this)
         NotificationHelper.ensureChannels(this)
         runCatching { FirebaseApp.initializeApp(this) }
+        runCatching {
+            val messaging = FirebaseMessaging.getInstance()
+            messaging.subscribeToTopic("restaurant_orders")
+            messaging.subscribeToTopic("zyplo_restaurant")
+            messaging.subscribeToTopic("lovebul_restaurant")
+            messaging.token.addOnSuccessListener { Prefs.fcmToken = it }
+        }
     }
 }

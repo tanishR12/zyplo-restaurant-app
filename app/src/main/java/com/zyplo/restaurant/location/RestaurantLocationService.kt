@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.location.Location
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
@@ -64,10 +65,18 @@ class RestaurantLocationService : LifecycleService() {
         @Volatile var lastLat: Double? = null
         @Volatile var lastLng: Double? = null
 
+        fun distanceKmTo(lat: Double, lng: Double): Double? {
+            val kitchenLat = lastLat ?: return null
+            val kitchenLng = lastLng ?: return null
+            val out = FloatArray(1)
+            Location.distanceBetween(kitchenLat, kitchenLng, lat, lng, out)
+            return out[0] / 1000.0
+        }
+
         fun start(context: Context) {
             val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
             if (fine != PackageManager.PERMISSION_GRANTED) return
-            context.startForegroundService(Intent(context, RestaurantLocationService::class.java))
+            runCatching { context.startForegroundService(Intent(context, RestaurantLocationService::class.java)) }
         }
     }
 }

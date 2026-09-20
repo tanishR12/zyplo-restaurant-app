@@ -14,7 +14,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationManagerCompat
 import com.zyplo.restaurant.R
+import com.zyplo.restaurant.alerts.OrderWatchService
 import com.zyplo.restaurant.data.Prefs
+import com.zyplo.restaurant.device.DeviceSettings
 
 class SetupActivity : AppCompatActivity() {
     private lateinit var status: TextView
@@ -23,15 +25,22 @@ class SetupActivity : AppCompatActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
         refreshStatus()
+        askBackgroundIfNeeded()
     }
 
     private val backgroundLocation = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { refreshStatus() }
+    ) {
+        refreshStatus()
+        DeviceSettings.promptNextSpecialSetting(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Prefs.setupComplete) {
+        if (Prefs.setupComplete &&
+            DeviceSettings.notificationsOn(this) &&
+            DeviceSettings.overlayOn(this)
+        ) {
             openPortal()
             return
         }
@@ -44,17 +53,49 @@ class SetupActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btnOverlay).setOnClickListener { askOverlay() }
         findViewById<Button>(R.id.btnBattery).setOnClickListener { askBattery() }
+        findViewById<Button>(R.id.btnLockScreen).setOnClickListener {
+            if (com.zyplo.restaurant.device.DeviceSettings.fullScreenAlertsOn(this)) {
+                Toast.makeText(this, R.string.lock_screen_ok, Toast.LENGTH_SHORT).show()
+            } else {
+                com.zyplo.restaurant.device.DeviceSettings.openFullScreenIntentSettings(this)
+            }
+        }
+        findViewById<Button>(R.id.btnAutostart).setOnClickListener {
+            com.zyplo.restaurant.device.DeviceSettings.openAutostart(this)
+        }
         findViewById<Button>(R.id.btnContinue).setOnClickListener {
             Prefs.setupComplete = true
+            OrderWatchService.start(this)
             openPortal()
         }
         refreshStatus()
+        requestAllInApp()
     }
 
     override fun onResume() {
         super.onResume()
         if (!::status.isInitialized) return
         refreshStatus()
+        if (DeviceSettings.missingRuntimePermissions(this).isEmpty()) {
+            DeviceSettings.promptNextSpecialSetting(this)
+        }
+    }
+
+    private fun requestAllInApp() {
+        val missing = DeviceSettings.missingRuntimePermissions(this)
+        if (missing.isNotEmpty()) {
+            runtimePermissions.launch(missing)
+        } else {
+            askBackgroundIfNeeded()
+        }
+    }
+
+    private fun askBackgroundIfNeeded() {
+        if (DeviceSettings.needsBackgroundLocation(this)) {
+            backgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        } else {
+            DeviceSettings.promptNextSpecialSetting(this)
+        }
     }
 
     private fun askNotifications() {
@@ -72,11 +113,6 @@ class SetupActivity : AppCompatActivity() {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             )
         )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            status.postDelayed({
-                backgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-            }, 400)
-        }
     }
 
     private fun askOverlay() {
@@ -109,7 +145,8 @@ class SetupActivity : AppCompatActivity() {
             R.string.setup_status,
             if (notify) "ON" else "OFF",
             if (overlay) "ON" else "OFF",
-            if (battery) "ON" else "OFF"
+            if (battery) "ON" else "OFF",
+            if (DeviceSettings.fullScreenAlertsOn(this)) "ON" else "OFF"
         )
     }
 

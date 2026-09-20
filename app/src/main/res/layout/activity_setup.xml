@@ -71,6 +71,20 @@
             android:layout_marginTop="10dp"
             android:text="@string/btn_battery" />
 
+        <Button
+            android:id="@+id/btnLockScreen"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="10dp"
+            android:text="@string/btn_lock_screen" />
+
+        <Button
+            android:id="@+id/btnAutostart"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="10dp"
+            android:text="@string/btn_autostart" />
+
         <TextView
             android:id="@+id/setupStatus"
             android:layout_width="match_parent"

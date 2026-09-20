@@ -16,6 +16,7 @@ import androidx.core.app.ServiceCompat
 import androidx.lifecycle.LifecycleService
 import com.zyplo.restaurant.R
 import com.zyplo.restaurant.alerts.NotificationHelper
+import com.zyplo.restaurant.data.IncomingOrder
 import com.zyplo.restaurant.data.Prefs
 import com.zyplo.restaurant.ui.MainActivity
 import kotlin.math.abs
@@ -33,30 +34,33 @@ class OverlayBubbleService : LifecycleService() {
     override fun onCreate() {
         super.onCreate()
         startForegroundInternal()
-        if (canDrawOverlays()) {
-            showBubble()
-        }
+        if (canDrawOverlays()) showBubble()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
         startForegroundInternal()
         when (intent?.action) {
-            ACTION_SHOW_ORDER -> {
-                val title = intent.getStringExtra(EXTRA_TITLE)
-                bubble?.findViewById<TextView>(R.id.bubbleBadge)?.apply {
-                    visibility = View.VISIBLE
-                    text = "1"
-                }
-                bubble?.findViewById<TextView>(R.id.bubbleHint)?.text =
-                    title ?: getString(R.string.new_order_title)
-            }
-            ACTION_CLEAR -> {
-                bubble?.findViewById<TextView>(R.id.bubbleBadge)?.visibility = View.GONE
-                bubble?.findViewById<TextView>(R.id.bubbleHint)?.text = getString(R.string.bubble_idle)
-            }
+            ACTION_SHOW_ORDER -> bindOrder(
+                IncomingOrder.parse(
+                    intent.getStringExtra(EXTRA_TITLE) ?: getString(R.string.new_order_title),
+                    intent.getStringExtra(EXTRA_BODY) ?: getString(R.string.new_order_body),
+                    intent.getStringExtra(EXTRA_ORDER) ?: "{}"
+                )
+            )
+            ACTION_CLEAR -> bindIdle()
         }
         return START_STICKY
+    }
+
+    private fun bindOrder(order: IncomingOrder) {
+        bubble?.findViewById<TextView>(R.id.bubbleBadge)?.visibility = View.VISIBLE
+        bubble?.contentDescription = order.title
+    }
+
+    private fun bindIdle() {
+        bubble?.findViewById<TextView>(R.id.bubbleBadge)?.visibility = View.GONE
+        bubble?.contentDescription = getString(R.string.bubble_idle)
     }
 
     private fun startForegroundInternal() {
@@ -71,9 +75,7 @@ class OverlayBubbleService : LifecycleService() {
         )
     }
 
-    private fun canDrawOverlays(): Boolean {
-        return android.provider.Settings.canDrawOverlays(this)
-    }
+    private fun canDrawOverlays(): Boolean = android.provider.Settings.canDrawOverlays(this)
 
     private fun showBubble() {
         if (bubble != null) return
@@ -88,8 +90,8 @@ class OverlayBubbleService : LifecycleService() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = 24
-            y = 220
+            x = 16
+            y = 180
         }
         var downX = 0f
         var downY = 0f
@@ -123,6 +125,7 @@ class OverlayBubbleService : LifecycleService() {
             }
         }
         windowManager?.addView(bubble, params)
+        bindIdle()
     }
 
     private fun openApp() {
@@ -143,20 +146,28 @@ class OverlayBubbleService : LifecycleService() {
         const val ACTION_SHOW_ORDER = "com.zyplo.restaurant.BUBBLE_ORDER"
         const val ACTION_CLEAR = "com.zyplo.restaurant.BUBBLE_CLEAR"
         const val EXTRA_TITLE = "title"
+        const val EXTRA_BODY = "body"
+        const val EXTRA_ORDER = "order"
 
         fun start(context: Context) {
             if (!Prefs.overlayEnabled) return
             if (!android.provider.Settings.canDrawOverlays(context)) return
-            context.startForegroundService(Intent(context, OverlayBubbleService::class.java))
+            runCatching { context.startForegroundService(Intent(context, OverlayBubbleService::class.java)) }
         }
 
-        fun showOrder(context: Context, title: String) {
+        fun showOrder(context: Context, order: IncomingOrder) {
             if (!Prefs.overlayEnabled || !android.provider.Settings.canDrawOverlays(context)) return
             context.startForegroundService(
                 Intent(context, OverlayBubbleService::class.java)
                     .setAction(ACTION_SHOW_ORDER)
-                    .putExtra(EXTRA_TITLE, title)
+                    .putExtra(EXTRA_TITLE, order.title)
+                    .putExtra(EXTRA_BODY, order.body)
+                    .putExtra(EXTRA_ORDER, order.rawJson)
             )
+        }
+
+        fun showOrder(context: Context, title: String) {
+            showOrder(context, IncomingOrder.parse(title, title, "{}"))
         }
 
         fun stop(context: Context) {
