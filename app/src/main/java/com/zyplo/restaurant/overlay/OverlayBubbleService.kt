@@ -54,23 +54,13 @@ class OverlayBubbleService : LifecycleService() {
     }
 
     private fun bindOrder(order: IncomingOrder) {
-        bubble?.findViewById<TextView>(R.id.cardTitle)?.text = order.title
-        bubble?.findViewById<TextView>(R.id.cardBody)?.text = order.body
-        bubble?.findViewById<TextView>(R.id.cardDistance)?.apply {
-            text = order.distanceLabel ?: ""
-            visibility = if (order.distanceLabel.isNullOrBlank()) View.GONE else View.VISIBLE
-        }
-        bubble?.findViewById<TextView>(R.id.cardRider)?.apply {
-            text = order.riderName?.let { getString(R.string.rider_label, it) } ?: ""
-            visibility = if (order.riderName.isNullOrBlank()) View.GONE else View.VISIBLE
-        }
+        bubble?.findViewById<TextView>(R.id.bubbleBadge)?.visibility = View.VISIBLE
+        bubble?.contentDescription = order.title
     }
 
     private fun bindIdle() {
-        bubble?.findViewById<TextView>(R.id.cardTitle)?.text = getString(R.string.bubble_idle)
-        bubble?.findViewById<TextView>(R.id.cardBody)?.text = getString(R.string.overlay_text)
-        bubble?.findViewById<TextView>(R.id.cardDistance)?.visibility = View.GONE
-        bubble?.findViewById<TextView>(R.id.cardRider)?.visibility = View.GONE
+        bubble?.findViewById<TextView>(R.id.bubbleBadge)?.visibility = View.GONE
+        bubble?.contentDescription = getString(R.string.bubble_idle)
     }
 
     private fun startForegroundInternal() {

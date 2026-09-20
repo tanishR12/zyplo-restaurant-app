@@ -1,56 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/orderCard"
-    android:layout_width="280dp"
-    android:layout_height="wrap_content"
-    android:background="@drawable/bg_order_card"
-    android:elevation="10dp"
-    android:orientation="vertical"
-    android:padding="14dp">
+    android:layout_width="48dp"
+    android:layout_height="48dp"
+    android:elevation="8dp">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/bubbleLogo"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:contentDescription="@string/app_name"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_bubble_logo"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Zyplo.Bubble"
+        app:strokeColor="@color/white"
+        app:strokeWidth="1.5dp" />
 
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/live_order_badge"
-        android:textColor="@color/alert_red"
-        android:textSize="12sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/cardTitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="@string/new_order_title"
-        android:textColor="@color/black"
-        android:textSize="16sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/cardBody"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="@string/new_order_body"
-        android:textColor="@color/text_muted"
-        android:textSize="13sp" />
-
-    <TextView
-        android:id="@+id/cardDistance"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:textColor="@color/zyplo_purple_dark"
-        android:textSize="13sp"
-        android:textStyle="bold"
+        android:id="@+id/bubbleBadge"
+        android:layout_width="14dp"
+        android:layout_height="14dp"
+        android:layout_gravity="top|end"
+        android:background="@drawable/bg_badge"
+        android:gravity="center"
+        android:text="!"
+        android:textColor="@color/white"
+        android:textSize="9sp"
         android:visibility="gone" />
-
-    <TextView
-        android:id="@+id/cardRider"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:textColor="@color/black"
-        android:textSize="13sp"
-        android:visibility="gone" />
-</LinearLayout>
+</FrameLayout>
